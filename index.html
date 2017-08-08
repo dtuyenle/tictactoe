@@ -1,0 +1,372 @@
+<html>
+  <head>
+    <title>Tic Tac Toe</title>
+    <link href="https://fonts.googleapis.com/css?family=Indie+Flower" rel="stylesheet" /> <!-- They are all https nowaday -->
+    <style>
+      * {
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #1D1F20;
+        font-family: 'Indie Flower', 'Comic Sans', cursive;
+        color: #FFF;
+        text-align: center;
+      }
+
+      h1 {
+        margin-bottom: 0;
+        padding-bottom: 5px;
+        font-size: 2.8em;
+        font-weight: bold;
+      }
+
+      .button_container button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        margin: 5px;
+        padding: 10px 25px;
+      }
+
+      .board {
+        margin: 2% auto;
+        display: table;
+        border: 2px solid #FFF;
+      }
+
+      .row {
+        display: table-row;
+      }
+
+      .cell {
+        display: table-cell;
+        width: 90px;
+        height: 90px;
+        border: 2px solid #FFF;
+        line-height: 90px;
+        overflow: hidden;
+        cursor: pointer;
+        text-align: center;
+        margin: 2px;
+        font-size: 3em;
+        font-weight: bold;
+        vertical-align: middle;
+      }
+
+      .label strong {
+        color: #4CAF50;
+      }
+
+      .X {
+        color: #FF8362;
+      }
+
+      .O {
+        color: #7FFFD4;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tic Tac Toe</h1>
+    <div id="ttt-container"></div>
+
+    <script>
+
+    (function() {
+
+      // Concept: when view change it dispatch an action to update state after that the view is updated
+
+      // ************  STORE class where contains all state of the game ************ //
+      class Store {
+
+        constructor(size = 3) {
+          this.board = [];
+          this.size = size;
+          this.turn = 'X';
+          this.winner = null;
+          this.tie = false;
+          this.score = {};
+
+          // initialize game board
+          this.resetBoard();
+          this.resetScore();
+        }
+
+        resetBoard() {
+          this.board = Array(this.size).fill().map(() => { return Array(this.size).fill().map(() => null); });
+          this.winner = null;
+          this.turn = 'X';
+          this.tie = false;
+        }
+
+        resetScore() {
+          this.score = {
+            total_x_win: 0,
+            total_o_win: 0,
+            total_tie: 0
+          };
+        }
+
+        switchTurn() {
+          this.turn = this.turn === 'X' ? 'O' : 'X';
+        }
+
+        updateBoard(board) {
+          this.board = board;
+          this.checkResult();
+          this.switchTurn();
+        }
+
+        updateSize(size) {
+          this.size = parseInt(size, 10);
+          this.resetBoard();
+          this.resetScore();
+        }
+
+        getEmptyCells() {
+          var indexes = [];
+          this.board.forEach((row, rowIndex) => {
+            row.forEach((cell, cellIndex) => {
+              if (cell === null) {
+                indexes.push([rowIndex, cellIndex]);
+              }
+            });
+          });
+          return indexes;
+        }
+
+        checkRows(board, size) {
+          let result = {};
+          let winner = null;
+          board.forEach((row, rowIndex) => {
+            row.forEach((cell) => {
+              if (cell !== null) {
+                result[rowIndex + cell] = result[rowIndex + cell] ? result[rowIndex + cell] + 1 : 1;
+              }
+            });
+          });
+          Object.keys(result).forEach((key) => {
+            if (result[key] === size) {
+              winner = key[key.length - 1];
+            }
+          });
+          return winner;
+        }
+
+        checkColumns(board, size) {
+          let result = {};
+          let winner = null;
+          let cellIndex = 0;
+          board.forEach((row, rowIndex) => {
+            const cellValue = row[cellIndex];
+            if (cellValue !== null) {
+              result[cellIndex + cellValue] = result[cellIndex + cellValue] ? result[cellIndex + cellValue] + 1 : 1;
+            }
+            if (rowIndex + 1 === this.size) { cellIndex++; }
+          });
+          Object.keys(result).forEach((key) => {
+            if (result[key] === size) {
+              winner = key[key.length - 1];
+            }
+          });
+          return winner;
+        }
+
+        checkDiagonals(board, size) {
+          let result = {};
+          let winner = null;
+          let cellIndex = 0;
+          board.forEach((row, rowIndex) => {
+            const cellValue0 = row[rowIndex];
+            const cellValue1 = row[size - rowIndex - 1];
+            if (cellValue0 !== null) {
+              result[0 + cellValue0] = result[0 + cellValue0] ? result[0 + cellValue0] + 1 : 1;
+            }
+            if (cellValue1 !== null) {
+              result[1 + cellValue1] = result[1 + cellValue1] ? result[1 + cellValue0] + 1 : 1;
+            }
+          });
+          Object.keys(result).forEach((key) => {
+            if (result[key] === size) {
+              winner = key[key.length - 1];
+            }
+          });
+          return winner;
+        }
+
+        checkResult() {
+          const board = this.board;
+          const size = this.size;
+          let winner = null;
+
+          // check rows
+          winner = this.checkRows(board, size);
+          // check columns
+          winner = winner === null ? this.checkColumns(board, size) : winner;
+          // check diagonals
+          winner = winner === null ? this.checkDiagonals(board, size) : winner;
+
+          // check empty cells
+          const availableCells = this.getEmptyCells();
+
+          if (winner !== null) {
+            this.winner = winner;
+            if (winner === 'X') { this.score.total_x_win++; }
+            if (winner === 'O') { this.score.total_o_win++; }
+          } else {
+            if (availableCells.length === 0) {
+              this.tie = true;
+              this.score.total_tie++;
+            }
+          }
+        }
+      }
+
+
+      // ************ VIEW class in charge of rendering state ************ //
+      class View {
+
+        constructor(dispatch) {
+          this.dispatch = dispatch;
+        }
+
+        bindEvent(elem, evtName, callback) {
+          if (elem.addEventListener) elem.addEventListener(evtName, callback, false);
+          if (elem.attachEvent) elem.attachEvent('on' + evtName, callback);
+        }
+
+        getDropDown() {
+          const options = [];
+          Array(10).fill().map((item, index) => {
+            const index_ = index + 3;
+            if (index_ % 3 === 0) {
+              options.push('<option value="' + index_ + '">' + index_ + ' x ' + index_ + '</option>');
+            }
+          });
+          return '<select id="ttt-size-dropdown">' + options.join('') + '</select>';
+        }
+
+        getTurn(turn) {
+          return '<p class="label"><strong>Player Turn:</strong> ' + turn + '</p>'
+        }
+
+        getResetButton() {
+          return '<div class="button_container"><button id="ttt-reset-button">Start New Game</button></div>';
+        }
+
+        getScores(score) {
+          const xWin = '<span><strong>X win:</strong> ' + score.total_x_win + ' times</span>';
+          const oWin = '<span> - <strong>O win:</strong> ' + score.total_o_win + ' times</span>';
+          const tie = '<span> - <strong>Tie:</strong> ' + score.total_tie + ' times</span>';
+          return '<p class="label">' + xWin + tie + oWin + '</p>';
+        }
+
+        getCell(cell, rowIndex, cellIndex) {
+          const value = cell === null ? '' : cell;
+          const id = rowIndex + '-' + cellIndex + '-' + cell;
+          const className = cell === null ? 'cell' : 'cell ' + cell;
+          return '<div id="ttt-' + id + '" class="' + className + '">' + value + '</div>';
+        }
+
+        addEventListenerForDropDown() {
+          const elem = document.getElementById('ttt-size-dropdown');
+          this.bindEvent(elem, 'change', (event) => {
+            const value = event.target.value;
+            this.dispatch({type: 'UPDATE_SIZE', size: value});
+            document.querySelector('#ttt-size-dropdown [value="' + value + '"]').selected = true;
+          });
+        }
+
+        addEventListenerForResetButton() {
+          const elem = document.getElementById('ttt-reset-button');
+          this.bindEvent(elem, 'click', () => {
+            this.dispatch({type: 'RESET_BOARD'});
+            this.dispatch({type: 'RESET_SCORE'});
+          });
+        }
+
+        addEventListenerForBoard(board) {
+          board.forEach((row, rowIndex) => {
+            row.forEach((cell, cellIndex) => {
+              const id = 'ttt-' + rowIndex + '-' + cellIndex + '-' + cell;
+              const elem = document.getElementById(id);
+              this.bindEvent(elem, 'click', () => {
+                if (document.getElementById(id).innerHTML === '') {
+                  dispatch({type: 'UPDATE_BOARD', rowIndex: rowIndex, cellIndex: cellIndex});
+                }
+              });
+            });
+          });
+        }
+
+        renderWinner(winner, tie) {
+          if (winner !== null || tie) {
+            if (winner !== null) { alert(winner + ' won the game!'); }
+            if (tie) { alert('It is a tie!'); }
+            this.dispatch({type: 'RESET_BOARD'});
+          }
+        }
+
+        render(store) {
+          let DATA = [];
+          const turnHTML = this.getTurn(store.turn);
+          const scoreHTML = this.getScores(store.score);
+          const resetButtonHTML = this.getResetButton();
+          const sizeDropDownHTML = this.getDropDown();
+
+          this.renderWinner(store.winner, store.tie);
+
+          store.board.forEach((row, rowIndex) => {
+            let html = '<div class="row">';
+            row.forEach((cell, cellIndex) => {
+              html = html + this.getCell(cell, rowIndex, cellIndex);
+            });
+            html = html + '</div>';
+            DATA.push(html);
+          });
+          document.getElementById('ttt-container').innerHTML = sizeDropDownHTML + resetButtonHTML + turnHTML + scoreHTML + '<div class="board">' + DATA.join('') + '</div>';
+
+          // Add event listener after rendering
+          this.addEventListenerForBoard(store.board);
+          this.addEventListenerForResetButton();
+          this.addEventListenerForDropDown();
+        }
+      }
+
+      // Dispatch an action based on type
+      const dispatch = (action) => {
+        switch (action.type) {
+          case 'UPDATE_BOARD':
+            const board = store.board.concat([]);
+            board[action.rowIndex][action.cellIndex] = store.turn;
+            store.updateBoard(board);
+            break;
+          case 'RESET_BOARD':
+            store.resetBoard();
+            break;
+          case 'RESET_SCORE':
+            store.resetScore();
+            break;
+          case 'UPDATE_SIZE':
+            store.updateSize(action.size);
+            break;
+          default:
+            break;
+        }
+
+        view.render(store);
+      }
+
+      // Start the game
+      const store = new Store(3);
+      const view = new View(dispatch);
+      view.render(store);
+
+    })();
+
+    </script>
+  </body>
+</html>
